@@ -47,10 +47,10 @@
     </LAYOUT>
   </FILTER>
   <FILTER uid="5" x="0.497229916897507" y="0.5829059829059829" useARA="0"
-          uiLastX_Normal="1083" uiLastY_Normal="597" uiopen_Normal="0">
+          uiLastX_Normal="1083" uiLastY_Normal="597" uiopen_Normal="1">
     <PLUGIN name="SimpleQ" format="VST3" category="Fx" manufacturer="yourcompany"
             version="1.0.0" file="E:\Desktop\audioSoftware\SimpleQ\Builds\VisualStudio2022\x64\Debug\VST3\SimpleQ.vst3\Contents\x86_64-win\SimpleQ.vst3"
-            uniqueId="2a0a220" isInstrument="0" fileTime="18b8b96ecc0" infoUpdateTime="18b8b9e923e"
+            uniqueId="2a0a220" isInstrument="0" fileTime="18b8bb1f054" infoUpdateTime="18b8bc6189f"
             numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="e95ab837"/>
     <STATE>191.VMjLgXK....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVMEUy.Ea0cVZtMEcgQWY9vSRC8Vav8lak4Fc9XCLt3hKt3hKt3hKt3hYRUUSTEETIckVwTjQisVTTgkdEYjKAQjYPQSPWgUdMcjKAQjct3hdA4hKt3hKt3hKtnTUv.UQAslXuk0UXoWUFE0YQcEV77RRC8Vav8lak4Fc9vyKVMEUy.Ea0cVZtMEcgQWY9..</STATE>
@@ -92,9 +92,23 @@
       </OUTPUTS>
     </LAYOUT>
   </FILTER>
-  <CONNECTION srcFilter="2" srcChannel="4096" dstFilter="6" dstChannel="4096"/>
+  <FILTER uid="8" x="0.2991689750692521" y="0.3333333333333333" useARA="0"
+          uiLastX_Normal="387" uiLastY_Normal="102" uiopen_Normal="1">
+    <PLUGIN name="SamplerPlugin" format="Internal" category="Synth" manufacturer="JUCE"
+            version="1.0.0" file="SamplerPlugin" uniqueId="2a34a53b" isInstrument="1"
+            fileTime="0" infoUpdateTime="0" numInputs="0" numOutputs="2"
+            isShell="0" hasARAExtension="0" uid="2a34a53b"/>
+    <STATE>0.</STATE>
+    <LAYOUT>
+      <INPUTS/>
+      <OUTPUTS>
+        <BUS index="0" layout="L R"/>
+      </OUTPUTS>
+    </LAYOUT>
+  </FILTER>
+  <CONNECTION srcFilter="2" srcChannel="4096" dstFilter="8" dstChannel="4096"/>
   <CONNECTION srcFilter="5" srcChannel="0" dstFilter="3" dstChannel="0"/>
   <CONNECTION srcFilter="5" srcChannel="1" dstFilter="3" dstChannel="1"/>
-  <CONNECTION srcFilter="6" srcChannel="0" dstFilter="5" dstChannel="0"/>
-  <CONNECTION srcFilter="6" srcChannel="1" dstFilter="5" dstChannel="1"/>
+  <CONNECTION srcFilter="8" srcChannel="0" dstFilter="5" dstChannel="0"/>
+  <CONNECTION srcFilter="8" srcChannel="1" dstFilter="5" dstChannel="1"/>
 </FILTERGRAPH>
