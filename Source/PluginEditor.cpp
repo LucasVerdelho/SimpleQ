@@ -28,12 +28,25 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
 		addAndMakeVisible(comp);
 	}
 
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->addListener(this);
+    }
+
+    // start the timer in order to see the changes
+    startTimerHz(60);
 
     setSize (600, 400);
 }
 
 SimpleQAudioProcessorEditor::~SimpleQAudioProcessorEditor()
 {
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+	    param->removeListener(this);
+	}
 }
 
 //==============================================================================
@@ -169,7 +182,13 @@ void SimpleQAudioProcessorEditor::timerCallback()
     if (parametersChanged.compareAndSetBool(false, true))
     {
 		// Update the mono chain
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+
+        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+
         // Signal a repaint
+        repaint();
 	}
 }   
 
