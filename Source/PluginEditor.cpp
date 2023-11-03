@@ -87,8 +87,6 @@ void RotarySliderWithLabels::paint(juce::Graphics& g)
     //g.setColour(Colours::yellow);
     //g.drawRect(sliderBounds);
 
-
-
     getLookAndFeel().drawRotarySlider(g, 
                                       sliderBounds.getX(), 
                                       sliderBounds.getY(), 
@@ -98,6 +96,35 @@ void RotarySliderWithLabels::paint(juce::Graphics& g)
         		                      startAngle, 
                                       endAngle, 
                                       *this);
+
+
+    auto center = sliderBounds.toFloat().getCentre();
+    auto radius = sliderBounds.getWidth() * 0.5f;
+
+    g.setColour(Colour(0xffcc537f));
+    g.setFont(getTextHeight());
+
+    auto numChoices = labels.size();
+    for (int i = 0; i < numChoices; i++)
+    {
+        auto pos = labels[i].pos;
+        jassert(0.f <= pos && pos <= 1.f);
+
+        auto ang = jmap(pos, 0.f, 1.f, startAngle, endAngle);
+
+        // Get the position of the label as if it's at the edge of the slider 
+        // at the correct angle, and then add a small offset so that it's outside the slider
+        auto c = center.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1, ang);
+
+        Rectangle<float> r;
+        auto str = labels[i].label;
+        r.setSize(g.getCurrentFont().getStringWidthFloat(str), getTextHeight());
+        r.setCentre(c);
+        r.setY(r.getY() + getTextHeight());
+
+        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);
+    }
+   
 }
 
 juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
@@ -312,6 +339,7 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
     highCutFreqSlider(*audioProcessor.apvts.getParameter("HighCut Freq"), "Hz"),
     lowCutSlopeSlider(*audioProcessor.apvts.getParameter("LowCut Slope"), "dB/Oct"),
     highCutSlopeSlider(*audioProcessor.apvts.getParameter("HighCut Slope"), "dB/Oct"),
+
     responseCurveComponent(audioProcessor),
     peakFreqSliderAttachment(audioProcessor.apvts, "Peak Freq", peakFreqSlider),
     peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
@@ -323,6 +351,12 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
+
+
+    peakFreqSlider.labels.add({ 0.f, "20Hz" });
+    peakFreqSlider.labels.add({ 1.f, "20kHz" });
+
+
 
     for (auto* comp : getComps())
     {
