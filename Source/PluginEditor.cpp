@@ -190,13 +190,20 @@ juce::String RotarySliderWithLabels::getDisplayString() const
 
 //==============================================================================
 
-ResponseCurveComponent::ResponseCurveComponent(SimpleQAudioProcessor& p) : audioProcessor(p)
+ResponseCurveComponent::ResponseCurveComponent(SimpleQAudioProcessor& p) :
+    audioProcessor(p),
+    leftChannelFifo(&audioProcessor.leftChannelFifo)
 {
 	const auto& params = audioProcessor.getParameters();
     for (auto param : params)
     {
 		param->addListener(this);
 	}
+
+
+    leftChannelFFTDataGenerator.changeOrder(FFTOrder::order2048);
+    monoBuffer.setSize(1, leftChannelFFTDataGenerator.getFFTSize());
+
 
     updateChain();
 
@@ -225,14 +232,60 @@ void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float new
 
 void ResponseCurveComponent::timerCallback()
 {
+    juce::AudioBuffer<float> tempIncomingBuffer;
+
+    while (leftChannelFifo->getNumCompleteBuffersAvailable() > 0)
+    {
+        if (leftChannelFifo->getAudioBuffer(tempIncomingBuffer))
+        {
+            auto size = tempIncomingBuffer.getNumSamples();
+
+            juce::FloatVectorOperations::copy(monoBuffer.getWritePointer(0, 0),
+                                              monoBuffer.getReadPointer(0, size),
+                                              monoBuffer.getNumSamples() - size);
+
+            juce::FloatVectorOperations::copy(monoBuffer.getWritePointer(0, monoBuffer.getNumSamples() - size),
+                							  tempIncomingBuffer.getReadPointer(0, 0),
+                							  size);
+
+
+            leftChannelFFTDataGenerator.produceFFTDataForRendering(monoBuffer, -48.f);
+
+        }
+    }
+
+
+    const auto fftBounds = getAnalysisArea().toFloat();
+    const auto fftSize = leftChannelFFTDataGenerator.getFFTSize();
+    const auto binWidth = audioProcessor.getSampleRate() / double(fftSize);
+
+    while (leftChannelFFTDataGenerator.getNumAvailableFFTDataBlocks() > 0)
+	{
+		std::vector<float> fftData;
+		if (leftChannelFFTDataGenerator.getFFTData(fftData))
+		{
+			pathProducer.generatePath(fftData, fftBounds, fftSize, binWidth, -48.f);
+		}
+	}
+
+    while (pathProducer.getNumPathsAvailable() > 0)
+    {
+		pathProducer.getPath(leftChannelFFTPath);
+	}
+
+
+
     if (parametersChanged.compareAndSetBool(false, true))
     {
         // Update the mono chain
         updateChain();
         // Signal a repaint
-        repaint();
+        //repaint();
     }
+
+    repaint();
 }
+
 
 
 void ResponseCurveComponent::updateChain()
@@ -327,6 +380,11 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
     }
 
+
+    // Frequency Spectrum Analyzer
+    g.setColour(Colour(0xff274560));
+    g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
+
     // Draw a box around the response curve
     //g.setColour(Colour(0xff376186));
     g.setColour(Colour(0xffff68a0)); //Alternative colour
@@ -335,6 +393,7 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
     // Draw the response curve
     g.setColour(Colours::white);
     g.strokePath(responseCurve, PathStrokeType(2.f));
+
 }
 
 
@@ -574,7 +633,7 @@ void SimpleQAudioProcessorEditor::resized()
     auto bounds = getLocalBounds();
     float hRatio = 0.33f;
     // Area for the frequency response graph (top 1/3 of the bounds)
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
+    auto responseArea = bounds.removeFromTop(static_cast<int>(bounds.getHeight() * hRatio));
     responseCurveComponent.setBounds(responseArea);
 
     bounds.removeFromTop(5);
@@ -585,23 +644,23 @@ void SimpleQAudioProcessorEditor::resized()
 
     // Area for the filter controls
     // Take the left 1/3 of the remaining bounds for the low cut
-    auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
+    auto lowCutArea = bounds.removeFromLeft(static_cast<int>(bounds.getWidth() * 0.33));
     // Take the right 1/2 of the remaining bounds for the high cut 
     // (essentially 1/3 of the original bounds)
-    auto highCutArea = bounds.removeFromRight(bounds.getWidth() * 0.5);
+    auto highCutArea = bounds.removeFromRight(static_cast<int>(bounds.getWidth() * 0.5));
 
     // Set the bounds of the sliders
-    lowCutFreqSlider.setBounds(lowCutArea.removeFromTop(lowCutArea.getHeight() * 0.75));
+    lowCutFreqSlider.setBounds(lowCutArea.removeFromTop(static_cast<int>(lowCutArea.getHeight() * 0.75)));
     lowCutSlopeSlider.setBounds(lowCutArea);
 
-    highCutFreqSlider.setBounds(highCutArea.removeFromTop(highCutArea.getHeight() * 0.75));
+    highCutFreqSlider.setBounds(highCutArea.removeFromTop(static_cast<int>(highCutArea.getHeight() * 0.75)));
     highCutSlopeSlider.setBounds(highCutArea);
 
     // Set the bounds of the peak filter controls (freq, gain, Q)
     // Take the top 1/3 of the remaining bounds for the frequency
-    peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.33));
+    peakFreqSlider.setBounds(bounds.removeFromTop(static_cast<int>(bounds.getHeight() * 0.33)));
     // Take the top 1/2 of the remaining bounds for the gain
-    peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
+    peakGainSlider.setBounds(bounds.removeFromTop(static_cast<int>(bounds.getHeight() * 0.5)));
     // The remaining bounds are for the Q
     peakQualitySlider.setBounds(bounds);
 
