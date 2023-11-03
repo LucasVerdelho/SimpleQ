@@ -428,6 +428,7 @@ void ResponseCurveComponent::resized()
 
     for (auto gdB : gain)
     {
+        // Gain text
         auto y = jmap(gdB, -24.f, 24.f, float(bottom), float(top));
 
         String str;
@@ -443,6 +444,16 @@ void ResponseCurveComponent::resized()
         g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colours::white); // Dimmer Colour
 		g.drawFittedText(str, r, juce::Justification::centred, 1);
 
+
+        // Frequency spectrum analysis text
+        str.clear();
+        str << (gdB - 24.f);
+
+        r.setX(1);
+        textWidth = g.getCurrentFont().getStringWidth(str);
+        r.setSize(textWidth, fontHeight);
+        g.setColour(Colours::wheat);
+        g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
 
 
