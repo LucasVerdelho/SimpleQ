@@ -198,6 +198,8 @@ ResponseCurveComponent::ResponseCurveComponent(SimpleQAudioProcessor& p) : audio
 		param->addListener(this);
 	}
 
+    updateChain();
+
 	startTimerHz(60);
 }
 
@@ -226,20 +228,26 @@ void ResponseCurveComponent::timerCallback()
     if (parametersChanged.compareAndSetBool(false, true))
     {
         // Update the mono chain
-        auto chainSettings = getChainSettings(audioProcessor.apvts);
-
-        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-
-        auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
-        auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
-
-        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
-        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
-
+        updateChain();
         // Signal a repaint
         repaint();
     }
+}
+
+
+void ResponseCurveComponent::updateChain()
+{
+    auto chainSettings = getChainSettings(audioProcessor.apvts);
+
+    auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+    updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+
+    auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
+    auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
+
+    updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
+    updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
+
 }
 
 
@@ -382,7 +390,7 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
 		addAndMakeVisible(comp);
 	}
 
-    setSize (600, 400);
+    setSize (600, 480);
 }
 
 SimpleQAudioProcessorEditor::~SimpleQAudioProcessorEditor()
@@ -405,15 +413,17 @@ void SimpleQAudioProcessorEditor::resized()
     // subcomponents in your editor..
 
     auto bounds = getLocalBounds();
+    float hRatio = 0.33f;
     // Area for the frequency response graph (top 1/3 of the bounds)
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
     responseCurveComponent.setBounds(responseArea);
 
+    bounds.removeFromTop(5);
 
     // We have 2/3 of vertical space left that we need to divide in 3:
     // The left 1/3 is for the low cut, the middle 1/3 is for the peak filter
     // and the right 1/3 is for the high cut
- 
+
     // Area for the filter controls
     // Take the left 1/3 of the remaining bounds for the low cut
     auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
