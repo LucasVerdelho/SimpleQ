@@ -380,9 +380,11 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
     }
 
+    leftChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
+
 
     // Frequency Spectrum Analyzer
-    g.setColour(Colour(0xff274560));
+    g.setColour(Colours::lightskyblue);
     g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
 
     // Draw a box around the response curve
