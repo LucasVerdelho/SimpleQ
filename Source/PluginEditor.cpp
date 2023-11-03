@@ -113,7 +113,7 @@ void LookAndFeel::drawToggleButton(juce::Graphics& g,
 
     else if (auto* ab = dynamic_cast<AnalyzerButton*>(&toggleButton))
     {
-        auto color = toggleButton.getToggleState() ? Colour(0x66ff68a0) : Colour(0xffff68a0);
+        auto color = toggleButton.getToggleState() ? Colour(0xffff68a0) : Colour(0x66ff68a0);
         g.setColour(color);
 
         auto bounds = toggleButton.getLocalBounds();
@@ -339,10 +339,14 @@ void PathProducer::process(juce::Rectangle<float> fftBounds, double sampleRate)
 }
 void ResponseCurveComponent::timerCallback()
 {
-    auto fftBounds = getAnalysisArea().toFloat();
-    auto sampleRate = audioProcessor.getSampleRate();
-    leftPathProducer.process(fftBounds, sampleRate);
-    rightPathProducer.process(fftBounds, sampleRate);
+    if (shouldShowFFTAnalysis)
+    {
+        auto fftBounds = getAnalysisArea().toFloat();
+        auto sampleRate = audioProcessor.getSampleRate();
+
+        leftPathProducer.process(fftBounds, sampleRate);
+        rightPathProducer.process(fftBounds, sampleRate);
+    }
 
     if (parametersChanged.compareAndSetBool(false, true))
     {
@@ -462,20 +466,25 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
     }
 
+
     // Frequency Spectrum Analyzer
-    // Left Channel
-    auto leftChannelFFTPath = leftPathProducer.getPath();
-    leftChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
+    if (shouldShowFFTAnalysis)
+    {
+        // Left Channel
+        auto leftChannelFFTPath = leftPathProducer.getPath();
+        leftChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
 
-    g.setColour(Colours::lightskyblue);
-    g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
+        g.setColour(Colours::lightskyblue);
+        g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
 
-    // Right Channel
-    auto rightChannelFFTPath = rightPathProducer.getPath();
-    rightChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
-    
-    g.setColour(Colours::seagreen);
-    g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
+        // Right Channel
+        auto rightChannelFFTPath = rightPathProducer.getPath();
+        rightChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
+
+        g.setColour(Colours::seagreen);
+        g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
+
+    }
 
 
     // Draw a box around the response curve
@@ -703,6 +712,59 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
     lowCutBypassButton.setLookAndFeel(&lnf);
     highCutBypassButton.setLookAndFeel(&lnf);
     analyzerEnabledButton.setLookAndFeel(&lnf);
+
+
+
+    auto safePtr = juce::Component::SafePointer<SimpleQAudioProcessorEditor>(this);
+    peakBypassButton.onClick = [safePtr]()
+        {
+            if (auto* comp = safePtr.getComponent())
+            {
+                auto bypassed = comp->peakBypassButton.getToggleState();
+
+                comp->peakFreqSlider.setEnabled(!bypassed);
+                comp->peakGainSlider.setEnabled(!bypassed);
+                comp->peakQualitySlider.setEnabled(!bypassed);
+            }
+        };
+
+
+    lowCutBypassButton.onClick = [safePtr]()
+        {
+            if (auto* comp = safePtr.getComponent())
+            {
+                auto bypassed = comp->lowCutBypassButton.getToggleState();
+
+                comp->lowCutFreqSlider.setEnabled(!bypassed);
+                comp->lowCutSlopeSlider.setEnabled(!bypassed);
+            }
+        };
+
+    highCutBypassButton.onClick = [safePtr]()
+        {
+            if (auto* comp = safePtr.getComponent())
+            {
+                auto bypassed = comp->highCutBypassButton.getToggleState();
+
+                comp->highCutFreqSlider.setEnabled(!bypassed);
+                comp->highCutSlopeSlider.setEnabled(!bypassed);
+            }
+        };
+
+    analyzerEnabledButton.onClick = [safePtr]()
+        {
+            if (auto* comp = safePtr.getComponent())
+            {
+                auto enabled = comp->analyzerEnabledButton.getToggleState();
+                comp->responseCurveComponent.toggleAnalysisEnablement(enabled);
+            }
+        };
+
+
+
+
+
+
 
 
     setSize (600, 480);
