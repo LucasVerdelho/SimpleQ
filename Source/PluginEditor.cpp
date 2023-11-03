@@ -386,7 +386,7 @@ void ResponseCurveComponent::resized()
     for (auto gdB : gain)
     {
         auto y = jmap(gdB, -24.f, 24.f, float(bottom), float(top));
-        g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colour(0x66c8c8c8)); // Dimmer Colour
+        g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colour(0x66376186)); // Dimmer Colour
         g.drawHorizontalLine(y, left, right);
     }
 
@@ -425,6 +425,27 @@ void ResponseCurveComponent::resized()
         g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
 
+
+    for (auto gdB : gain)
+    {
+        auto y = jmap(gdB, -24.f, 24.f, float(bottom), float(top));
+
+        String str;
+        if (gdB > 0)
+            str << "+";
+        str << gdB;
+
+        auto textWidth = g.getCurrentFont().getStringWidth(str);
+        Rectangle<int> r;
+        r.setSize(textWidth, fontHeight);
+        r.setX(getWidth() - textWidth);
+        r.setCentre(r.getCentreX(), y);
+        g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colours::white); // Dimmer Colour
+		g.drawFittedText(str, r, juce::Justification::centred, 1);
+
+    }
+
+
 }
 
 
@@ -434,8 +455,8 @@ juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
 
     bounds.removeFromTop(4);
     bounds.removeFromBottom(12);
-    bounds.removeFromLeft(12);
-    bounds.removeFromRight(12);
+    bounds.removeFromLeft(18);
+    bounds.removeFromRight(18);
 
 
     return bounds;
