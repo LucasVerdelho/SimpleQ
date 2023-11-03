@@ -113,6 +113,11 @@ void SimpleQAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBloc
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
 
+    //osc.initialise([](float x) {return std::sin(x); });
+
+    //spec.numChannels = getTotalNumOutputChannels();
+    //osc.prepare(spec);
+    //osc.setFrequency(5000);
 }
 
 void SimpleQAudioProcessor::releaseResources()
@@ -167,6 +172,12 @@ void SimpleQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
 
     // Prepare to get each channel's block of data
     juce::dsp::AudioBlock<float> block(buffer);
+
+	// Uncomment for testing precision with oscillator
+    //buffer.clear();
+
+    //juce::dsp::ProcessContextReplacing<float> stereoContext(block);
+    //osc.process(stereoContext);
 
     // Get the left and right channels
     auto leftBlock = block.getSingleChannelBlock(0);
