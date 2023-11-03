@@ -258,7 +258,9 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
 
     g.fillAll(Colour(0xff182a3a));
 
-    auto responseArea = getLocalBounds();
+    g.drawImage(background, getLocalBounds().toFloat());
+
+    auto responseArea = getAnalysisArea();
 
     auto w = responseArea.getWidth();
 
@@ -326,13 +328,103 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
     }
 
     // Draw a box around the response curve
-    //g.setColour(Colours::orange);
-    //g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
+    //g.setColour(Colour(0xff376186));
+    g.setColour(Colour(0xffff68a0)); //Alternative colour
+    g.drawRoundedRectangle(getRenderArea().toFloat(), 4.f, 1.f);
 
     // Draw the response curve
     g.setColour(Colours::white);
     g.strokePath(responseCurve, PathStrokeType(2.f));
 }
+
+
+
+void ResponseCurveComponent::resized()
+{
+	using namespace juce;
+    background = Image(Image::PixelFormat::RGB, getWidth(), getHeight(), true);
+
+    Graphics g(background);
+
+    Array<float> freqs
+    {
+        20,30,40,50,100,
+        200,300,400,500,1000,
+        2000,3000,4000,5000,10000,
+        20000
+	};
+
+    auto renderArea = getAnalysisArea();
+    auto left = renderArea.getX();
+    auto right = renderArea.getRight();
+    auto top = renderArea.getY();
+    auto bottom = renderArea.getBottom();
+    auto width  = renderArea.getWidth();
+
+
+    g.setColour(Colour(0xff376186));
+    //g.setColour(Colour(0xffff68a0)); //Alternative colour
+    Array<float> xs;
+    for (auto f : freqs)
+    {
+		auto normX = mapFromLog10(f, 20.f, 20000.f);
+		xs.add(left + width * normX);
+	}
+
+    g.setColour(Colour(0x66376186)); // Dimmer Colour
+    //g.setColour(Colour(0xffff68a0)); //Alternative colour
+    for (auto x : xs)
+    {
+        g.drawVerticalLine(x, top, bottom);
+    }
+
+    Array<float> gain
+    {
+        -24, -12, 0, 12, 24
+    };
+
+    for (auto gdB : gain)
+    {
+        auto y = jmap(gdB, -24.f, 24.f, float(bottom), float(top));
+        g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colour(0x66c8c8c8)); // Dimmer Colour
+        g.drawHorizontalLine(y, left, right);
+    }
+
+}
+
+
+juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
+{
+    auto bounds = getLocalBounds();
+
+    bounds.removeFromTop(4);
+    bounds.removeFromBottom(20);
+    bounds.removeFromLeft(12);
+    bounds.removeFromRight(12);
+
+
+    return bounds;
+}
+
+
+
+juce::Rectangle<int> ResponseCurveComponent::getAnalysisArea()
+{
+	auto bounds = getRenderArea();
+
+	bounds.removeFromTop(4);
+    bounds.removeFromBottom(4);
+
+	return bounds;
+}
+
+
+
+
+
+
+
+
 
 
 
