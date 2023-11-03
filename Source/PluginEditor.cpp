@@ -10,6 +10,84 @@
 #include "PluginEditor.h"
 
 
+void LookAndFeel::drawRotarySlider(juce::Graphics& g,
+    int x,
+    int y,
+    int width,
+    int height,
+    float sliderPosProportional,
+    float rotaryStartAngle,
+    float rotaryEndAngle,
+    juce::Slider& slider)
+{
+    using namespace juce;
+
+    auto bounds = Rectangle<float>(x, y, width, width);
+
+    g.setColour(Colours::white);
+    g.fillEllipse(bounds);
+
+    g.setColour(Colours::darkgrey);
+    g.drawEllipse(bounds, 1.f);
+
+    auto center = bounds.getCentre();
+
+    Path p;
+    
+    Rectangle<float> r;
+    r.setLeft(center.getX() - 2);
+    r.setRight(center.getX() + 2);
+    r.setTop(bounds.getY());
+    r.setBottom(center.getY());
+
+    p.addRectangle(r);
+
+    jassert(rotaryStartAngle < rotaryEndAngle);
+
+    auto sliderAngRad = jmap(sliderPosProportional, 0.f, 1.f, rotaryStartAngle, rotaryEndAngle);
+
+    p.applyTransform(AffineTransform().rotated(sliderAngRad, center.getX(), center.getY()));
+
+    g.fillPath(p);
+}
+
+
+
+void RotarySliderWithLabels::paint(juce::Graphics& g)
+{
+    using namespace juce;
+
+    auto startAngle = degreesToRadians(180.f + 45.f);
+    auto endAngle = degreesToRadians(180.f - 45.f) + MathConstants<float>::twoPi;
+
+    auto range = getRange();
+
+    auto sliderBounds = getSliderBounds();
+
+    getLookAndFeel().drawRotarySlider(g, 
+                                      sliderBounds.getX(), 
+                                      sliderBounds.getY(), 
+                                      sliderBounds.getWidth(), 
+                                      sliderBounds.getHeight(),
+        		                      jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0),
+        		                      startAngle, 
+                                      endAngle, 
+                                      *this);
+}
+
+juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
+{
+    return getLocalBounds();
+}
+
+
+
+
+
+
+
+//==============================================================================
+
 ResponseCurveComponent::ResponseCurveComponent(SimpleQAudioProcessor& p) : audioProcessor(p)
 {
 	const auto& params = audioProcessor.getParameters();
