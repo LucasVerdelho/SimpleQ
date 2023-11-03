@@ -77,35 +77,62 @@ void LookAndFeel::drawToggleButton(juce::Graphics& g,
 {
     using namespace juce;
 
-    Path powerButton;
+    // if the passed button is a powerbutton
+    if (auto pb = dynamic_cast<PowerButton*>(&toggleButton))
+    {
+        Path powerButton;
+        
+        auto bounds = toggleButton.getLocalBounds();
+        auto size = jmin(bounds.getWidth(), bounds.getHeight()) - 6;
+        
+        auto r = bounds.withSizeKeepingCentre(size, size).toFloat();
+        
+        float angle = 30.f * MathConstants<float>::pi / 180.f;
+        
+        size -= 6;
+        
+        powerButton.addCentredArc(r.getCentreX(),
+                                  r.getCentreY(),
+                                  size * 0.5f,
+                                  size * 0.5f,
+                                  0.f,
+                                  angle,
+                                  angle - MathConstants<float>::pi * 2.f,
+                                  true);
+        
+        powerButton.startNewSubPath(r.getCentreX(), r.getY());
+        powerButton.lineTo(r.getCentre());
+        
+        PathStrokeType pst(2.f, PathStrokeType::JointStyle::curved);
+        auto color = toggleButton.getToggleState() ? Colour(0x66ff68a0) : Colour(0xffff68a0);
+        g.setColour(color);
+        g.strokePath(powerButton, pst);
+        
+        g.drawEllipse(r.toFloat(), 2.f);
+    }
 
-    auto bounds = toggleButton.getLocalBounds();
-    auto size = jmin(bounds.getWidth(), bounds.getHeight()) - 6;
+    else if (auto* ab = dynamic_cast<AnalyzerButton*>(&toggleButton))
+    {
+        auto color = toggleButton.getToggleState() ? Colour(0x66ff68a0) : Colour(0xffff68a0);
+        g.setColour(color);
 
-    auto r = bounds.withSizeKeepingCentre(size, size).toFloat();
+        auto bounds = toggleButton.getLocalBounds();
+        auto insetRect = bounds.reduced(4.f);
 
-    float angle = 30.f * MathConstants<float>::pi / 180.f;
+        Path randomPath;
 
-    size -= 6;
+        Random r;
+        randomPath.startNewSubPath(insetRect.getX(),
+								   insetRect.getY() + insetRect.getHeight() * r.nextFloat());
 
-    powerButton.addCentredArc(r.getCentreX(),
-    						  r.getCentreY(),
-    						  size * 0.5f,
-    						  size * 0.5f,
-    						  0.f,
-    						  angle,
-    						  angle - MathConstants<float>::pi * 2.f,
-    						  true);
-    
-    powerButton.startNewSubPath(r.getCentreX(), r.getY());
-    powerButton.lineTo(r.getCentre());
+        for (auto x = insetRect.getX() + 1; x < insetRect.getRight(); x += 2)
+        {
+            randomPath.lineTo(x,insetRect.getY() + insetRect.getHeight() * r.nextFloat());
+        }
 
-    PathStrokeType pst(2.f, PathStrokeType::JointStyle::curved);
-    auto color = toggleButton.getToggleState() ? Colour(0x66ff68a0) : Colour(0xffff68a0);
-	g.setColour(color);
-	g.strokePath(powerButton, pst);
+        g.strokePath(randomPath, PathStrokeType(2.f));
+    }
 
-	g.drawEllipse(r.toFloat(), 2.f);
 }
 
 
@@ -675,7 +702,7 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
     peakBypassButton.setLookAndFeel(&lnf);
     lowCutBypassButton.setLookAndFeel(&lnf);
     highCutBypassButton.setLookAndFeel(&lnf);
-
+    analyzerEnabledButton.setLookAndFeel(&lnf);
 
 
     setSize (600, 480);
@@ -686,12 +713,13 @@ SimpleQAudioProcessorEditor::~SimpleQAudioProcessorEditor()
     peakBypassButton.setLookAndFeel(nullptr);
     lowCutBypassButton.setLookAndFeel(nullptr);
     highCutBypassButton.setLookAndFeel(nullptr);
+    analyzerEnabledButton.setLookAndFeel(nullptr);
 }
 
 //==============================================================================
 void SimpleQAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    using namespace juce;
+    using namespace  juce;
 
     g.fillAll(Colour(0xff182a3a));
 
@@ -703,6 +731,18 @@ void SimpleQAudioProcessorEditor::resized()
     // subcomponents in your editor..
 
     auto bounds = getLocalBounds();
+
+    auto analyzerEnabledArea = bounds.removeFromTop(25);
+    analyzerEnabledArea.setWidth(100);
+    analyzerEnabledArea.setX(5);
+    analyzerEnabledArea.removeFromTop(2);
+
+    analyzerEnabledButton.setBounds(analyzerEnabledArea);
+
+    bounds.removeFromTop(5);
+
+
+    // The ratio of the bounds that we want to use for the frequency response graph
     float hRatio = 0.33f;
     // Area for the frequency response graph (top 1/3 of the bounds)
     auto responseArea = bounds.removeFromTop(static_cast<int>(bounds.getHeight() * hRatio));
