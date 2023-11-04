@@ -271,6 +271,7 @@ struct ResponseCurveComponent : juce::Component,
 	void timerCallback() override;
 
     void paint(juce::Graphics& g) override;
+
     void resized() override;
 
     void toggleAnalysisEnablement(bool enabled){ shouldShowFFTAnalysis = enabled;}
@@ -282,10 +283,19 @@ private:
 
     MonoChain monoChain;
 
+    void updateResponseCurve();
+
+    juce::Path responseCurve;
+
     void updateChain();
 
-    // We pre-render the frequency response plot into this image
-    juce::Image background;
+    void drawBackgroundGrid(juce::Graphics& g);
+
+    void drawTextLabels(juce::Graphics& g);
+
+    std::vector<float> getFrequencies();
+    std::vector<float> getGains();
+    std::vector<float> getXs(const std::vector<float>& freqs, float left, float width);
 
     juce::Rectangle<int> getRenderArea();
 

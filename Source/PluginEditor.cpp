@@ -60,9 +60,15 @@ void LookAndFeel::drawRotarySlider(juce::Graphics& g,
         r.setCentre(bounds.getCentre());
 
         g.setColour(Colour(0xff274560));
-        g.fillRect(r);
+        //g.fillRect(r);
 
-        g.setColour(Colours::white);
+        //g.setColour(Colours::white);
+
+        // FONT SETTINGS
+        juce::Font testFont;
+        testFont.setBold(true);
+        g.setFont(testFont);
+
         g.drawFittedText(text, r.toNearestInt(), juce::Justification::centred, 1);
     }
 
@@ -135,7 +141,7 @@ void LookAndFeel::drawToggleButton(juce::Graphics& g,
 
 }
 
-
+//==============================================================================
 
 
 void RotarySliderWithLabels::paint(juce::Graphics& g)
@@ -239,7 +245,8 @@ juce::String RotarySliderWithLabels::getDisplayString() const
 		jassertfalse; // Should never happen
 	}
 
-    if (suffix != "")
+    str << "";
+    if (suffix != "" && suffix != "dB/Oct")
     {
         str << " ";
         if (addK)
@@ -352,6 +359,7 @@ void ResponseCurveComponent::timerCallback()
     {
         // Update the mono chain
         updateChain();
+        updateResponseCurve();
         // Signal a repaint
         //repaint();
     }
@@ -383,13 +391,10 @@ void ResponseCurveComponent::updateChain()
 
 
 
-void ResponseCurveComponent::paint(juce::Graphics& g)
+
+void ResponseCurveComponent::updateResponseCurve()
 {
     using namespace juce;
-
-    g.fillAll(Colour(0xff182a3a));
-
-    g.drawImage(background, getLocalBounds().toFloat());
 
     auto responseArea = getAnalysisArea();
 
@@ -413,59 +418,64 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
         if (!monoChain.isBypassed<ChainPositions::Peak>())
             mag *= peak.coefficients->getMagnitudeForFrequency(freq, sampleRate);
 
-
-        if ( !monoChain.isBypassed<ChainPositions::LowCut>() )
+        if (!monoChain.isBypassed<ChainPositions::LowCut>())
         {
             if (!lowCut.isBypassed<0>())
                 mag *= lowCut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!lowCut.isBypassed<1>())
                 mag *= lowCut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!lowCut.isBypassed<2>())
                 mag *= lowCut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!lowCut.isBypassed<3>())
                 mag *= lowCut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
         }
 
         if (!monoChain.isBypassed<ChainPositions::HighCut>())
         {
             if (!highCut.isBypassed<0>())
                 mag *= highCut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!highCut.isBypassed<1>())
                 mag *= highCut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!highCut.isBypassed<2>())
                 mag *= highCut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-
             if (!highCut.isBypassed<3>())
                 mag *= highCut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
         }
 
-
         mags[i] = Decibels::gainToDecibels(mag);
     }
 
-    Path responseCurve;
+
+    responseCurve.clear();
 
     const double outputMin = responseArea.getBottom();
     const double outputMax = responseArea.getY();
     auto map = [outputMin, outputMax](double input)
-        {
-            // -24 dB to +24 dB for the response curve to fit the peak filter
-            return jmap(input, -24.0, 24.0, outputMin, outputMax);
-        };
+    {
+		return jmap(input, -24.0, 24.0, outputMin, outputMax);
+	};
 
-    responseCurve.startNewSubPath(responseArea.getX(), map(mags.front()));
+    responseCurve.lineTo(responseArea.getX(), map(mags.front()));
 
     for (size_t i = 1; i < mags.size(); i++)
     {
         responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
     }
+}
 
+
+
+void ResponseCurveComponent::paint(juce::Graphics& g)
+{
+    using namespace juce;
+
+    g.fillAll(Colour(0xff182a3a));
+
+    //g.drawImage(background, getLocalBounds().toFloat());
+
+    drawBackgroundGrid(g);
+
+    auto responseArea = getAnalysisArea();
 
     // Frequency Spectrum Analyzer
     if (shouldShowFFTAnalysis)
@@ -486,63 +496,84 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
 
     }
 
-
-    // Draw a box around the response curve
-    //g.setColour(Colour(0xff376186));
-    g.setColour(Colour(0xffff68a0)); //Alternative colour
-    g.drawRoundedRectangle(getRenderArea().toFloat(), 4.f, 1.f);
-
-    // Draw the response curve
     g.setColour(Colours::white);
     g.strokePath(responseCurve, PathStrokeType(2.f));
+
+    Path border;
+
+    border.setUsingNonZeroWinding(false);
+
+    border.addRoundedRectangle(getRenderArea(), 4.f);
+    border.addRectangle(getLocalBounds());
+
+    g.setColour(Colour(0xff182a3a));
+    g.fillPath(border);
+
+    drawTextLabels(g);
+
+    g.setColour(Colour(0xffff68a0));
+    g.drawRoundedRectangle(getRenderArea().toFloat(), 4.f, 1.f);
 
 }
 
 
 
-void ResponseCurveComponent::resized()
+std::vector<float> ResponseCurveComponent::getFrequencies()
 {
-	using namespace juce;
-    background = Image(Image::PixelFormat::RGB, getWidth(), getHeight(), true);
+	return { 20, 50, 100, 200, 500, 1000,
+    			 2000, 5000, 10000, 20000 };
+}
 
-    Graphics g(background);
 
-    Array<float> freqs
+
+std::vector<float> ResponseCurveComponent::getGains()
+{
+	return { -24, -12, 0, 12, 24 };
+}
+
+
+std::vector<float> ResponseCurveComponent::getXs(const std::vector<float>& freqs, float left, float width)
+{
+	std::vector<float> xs;
+
+    for (auto f : freqs)
     {
-        20,/*30,40,*/50,100,
-        200,/*300,400,*/500,1000,
-        2000,/*3000,4000,*/5000,10000,
-        20000
-	};
+		auto normX = juce::mapFromLog10(f, 20.f, 20000.f);
+		xs.push_back(left + width * normX);
+	}
+
+	return xs;
+}
+
+
+void ResponseCurveComponent::drawBackgroundGrid(juce::Graphics& g)
+{
+    using namespace juce;
+    auto freqs = getFrequencies();
+
+    // Set the background colour of the grid
+    g.setColour(Colour(0x99020506));
+
+    g.fillAll();
 
     auto renderArea = getAnalysisArea();
+
     auto left = renderArea.getX();
     auto right = renderArea.getRight();
     auto top = renderArea.getY();
     auto bottom = renderArea.getBottom();
-    auto width  = renderArea.getWidth();
+    auto width = renderArea.getWidth();
 
+    auto xs = getXs(freqs, left, width);
 
     g.setColour(Colour(0xff376186));
-    //g.setColour(Colour(0xffff68a0)); //Alternative colour
-    Array<float> xs;
-    for (auto f : freqs)
-    {
-		auto normX = mapFromLog10(f, 20.f, 20000.f);
-		xs.add(left + width * normX);
-	}
-
-    g.setColour(Colour(0x66376186)); // Dimmer Colour
     //g.setColour(Colour(0xffff68a0)); //Alternative colour
     for (auto x : xs)
     {
         g.drawVerticalLine(x, top, bottom);
     }
-
-    Array<float> gain
-    {
-        -24, -12, 0, 12, 24
-    };
+    
+    auto gain = getGains();
 
     for (auto gdB : gain)
     {
@@ -550,63 +581,78 @@ void ResponseCurveComponent::resized()
         g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colour(0x66376186)); // Dimmer Colour
         g.drawHorizontalLine(y, left, right);
     }
+}
 
+
+void ResponseCurveComponent::drawTextLabels(juce::Graphics& g)
+{
+    using namespace juce;
 
     g.setColour(Colours::white);
     const int fontHeight = 10;
     g.setFont(fontHeight);
 
+
+    auto renderArea = getAnalysisArea();
+    auto left = renderArea.getX();
+
+    auto top = renderArea.getY();
+    auto bottom = renderArea.getBottom();
+    auto width = renderArea.getWidth();
+
+    auto freqs = getFrequencies();
+    auto xs = getXs(freqs, left, width);
+
     for (int i = 0; i < freqs.size(); i++)
     {
-        auto f = freqs[i];
-        auto x = xs[i];
+		auto f = freqs[i];
+		auto x = xs[i];
 
-        bool addK = false;
+		bool addK = false;
+		String str;
 
-        String str;
         if (f > 999.f)
         {
-            addK = true;
-            f /= 1000.f;
-        }
+			addK = true;
+			f /= 1000.f;
+		}
 
-        str << f;
-        if (addK)
-			str << "k";
+		str << f;
+		if (addK)
+            str << "k";
         str << "Hz";
 
-		auto textWidth = g.getCurrentFont().getStringWidth(str);
+        auto textWidth = g.getCurrentFont().getStringWidth(str);
 
-		Rectangle<int> r;
-		r.setSize(textWidth, fontHeight);
-		r.setCentre(x, 0);
-        auto y = getBottom() - fontHeight;
-		r.setY(y);
+        Rectangle<int> r;
+        r.setSize(textWidth, fontHeight);
+        r.setCentre(x, 0);
+        r.setY(1);
 
         g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
 
+    auto gain = getGains();
 
     for (auto gdB : gain)
     {
-        // Gain text
         auto y = jmap(gdB, -24.f, 24.f, float(bottom), float(top));
 
         String str;
         if (gdB > 0)
-            str << "+";
+			str << "+";
         str << gdB;
 
-        auto textWidth = g.getCurrentFont().getStringWidth(str);
-        Rectangle<int> r;
-        r.setSize(textWidth, fontHeight);
-        r.setX(getWidth() - textWidth);
-        r.setCentre(r.getCentreX(), y);
-        g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colours::white);
-		g.drawFittedText(str, r, juce::Justification::centred, 1);
+		auto textWidth = g.getCurrentFont().getStringWidth(str);
 
+		Rectangle<int> r;
 
-        // Frequency spectrum analysis text
+		r.setSize(textWidth, fontHeight);
+		r.setX(getWidth() - textWidth);
+		r.setCentre(r.getCentreX(), y);
+
+		g.setColour(gdB == 0.f ? Colour(0xffff68a0) : Colours::white);
+
         str.clear();
         str << (gdB - 24.f);
 
@@ -616,8 +662,16 @@ void ResponseCurveComponent::resized()
         g.setColour(Colours::wheat);
         g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
+}
 
 
+
+void ResponseCurveComponent::resized()
+{
+    using namespace juce;
+
+    responseCurve.preallocateSpace(getWidth() * 3);
+    updateResponseCurve();
 }
 
 
@@ -625,8 +679,8 @@ juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
 {
     auto bounds = getLocalBounds();
 
-    bounds.removeFromTop(4);
-    bounds.removeFromBottom(12);
+    bounds.removeFromTop(12);
+    bounds.removeFromBottom(4);
     bounds.removeFromLeft(18);
     bounds.removeFromRight(18);
 
@@ -658,7 +712,7 @@ SimpleQAudioProcessorEditor::SimpleQAudioProcessorEditor (SimpleQAudioProcessor&
     peakQualitySlider(*audioProcessor.apvts.getParameter("Peak Quality"), ""),
     lowCutFreqSlider(*audioProcessor.apvts.getParameter("LowCut Freq"), "Hz"),
     highCutFreqSlider(*audioProcessor.apvts.getParameter("HighCut Freq"), "Hz"),
-    lowCutSlopeSlider(*audioProcessor.apvts.getParameter("LowCut Slope"), "dB/Oct"),
+    lowCutSlopeSlider(*audioProcessor.apvts.getParameter("LowCut Slope"), "dB/Oct"), // dB/Octave doesnt fit inside the knob
     highCutSlopeSlider(*audioProcessor.apvts.getParameter("HighCut Slope"), "dB/Oct"),
 
     responseCurveComponent(audioProcessor),
