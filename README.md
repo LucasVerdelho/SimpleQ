@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is my first time developing a VST3 plugin using the JUCE framework designed for audio processing. This plugin includes a High and Low-Cut filters, one adjustable parametric EQ band and a real-time frequency spectrum analyzer.
+SimpleQ is the first VST3 plugin that I've developed using the JUCE framework. It's a basic plugin that includes High and Low-Cut filters, an adjustable parametric EQ band and a real-time frequency spectrum analyzer.
 
 ## Features
 
@@ -35,7 +35,9 @@ The plugin features a built-in frequency spectrum analyzer, allowing users to vi
 
 The plugin provides a very basic and user-friendly interface. Users can easily adjust parameters and monitor the changes in real-time.
 
-![image]
+<p align="center">
+  <img src="https://github.com/LucasVerdelho/SimpleQ/blob/main/images/SimpleQ_in_use.png" />
+</p>
 
 ## TODO
 
