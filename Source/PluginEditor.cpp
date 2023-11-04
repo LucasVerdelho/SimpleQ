@@ -246,7 +246,7 @@ juce::String RotarySliderWithLabels::getDisplayString() const
 	}
 
     str << "";
-    if (suffix != "" && suffix != "dB/Oct")
+    if (suffix != "")
     {
         str << " ";
         if (addK)
